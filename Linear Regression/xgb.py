@@ -10,9 +10,6 @@ start = time.time()
 data = pd.read_csv('../train/train_encoded.csv')
 X = data.drop('Danceability', axis=1)
 y = data['Danceability']
-# le = LabelEncoder()
-# for i in X:
-#     X[i] = le.fit_transform(X[i])
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
