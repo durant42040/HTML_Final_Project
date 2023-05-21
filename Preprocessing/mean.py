@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.impute import SimpleImputer
 
-data = pd.read_csv('../train_pruned.csv')
+data = pd.read_csv('../test_cleaned.csv')
 
 # Create an instance of the SimpleImputer class with the strategy parameter set to 'mean'
 imputer = SimpleImputer(strategy='mean')
@@ -12,4 +12,4 @@ imputer.fit(data)
 data_imputed = pd.DataFrame(imputer.transform(data), columns=data.columns)
 
 # put data_imputed into csv file
-data_imputed.to_csv('../train_imputed.csv', index=False)
+data_imputed.to_csv('../test_imputed_mean.csv', index=False)
