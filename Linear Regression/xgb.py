@@ -4,17 +4,18 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 start = time.time()
 # data preprocessing
 data = pd.read_csv('../train/train_encoded.csv')
-X = data.drop('Danceability', axis=1)
+X = data.drop(['Danceability'], axis=1)
 y = data['Danceability']
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 
 # Normalization
-# sc = StandardScaler()
+sc = StandardScaler()
 # X_train = sc.fit_transform(X_train)
 # X_test = sc.transform(X_test)
 
@@ -25,8 +26,8 @@ params = {
     'colsample_bytree': 0.3,
     'subsample': 0.8,
     'eval_metric': 'mae',
+    'gamma': 5
 }
-
 # Create DMatrices
 d_train = xgb.DMatrix(X_train, label=y_train)
 d_test = xgb.DMatrix(X_test, label=y_test)
@@ -51,12 +52,12 @@ for i in range(len(danceability)):
 print(danceability)
 
 
-print(f"Ein = {mean_absolute_error(np.round(regressor.predict(d_train)), np.array(y_train))}")
-print(f"Eout = {mean_absolute_error(np.round(regressor.predict(d_test)), np.array(y_test))}")
+print(f"Ein = {np.mean(abs(np.round(regressor.predict(d_train))-np.array(y_train)))}")
+print(f"Eout = {np.mean(abs(np.round(regressor.predict(d_test))-np.array(y_test)))}")
 
 danceability_df = pd.DataFrame(danceability)
 danceability_df.to_csv('results.csv', index=False, header=False)
 
 end = time.time()
 
-print(f"time {end - start}")
+print(f"time {end - start}s")
