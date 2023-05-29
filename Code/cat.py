@@ -17,7 +17,7 @@ categorical_features = ['Album_type', 'Licensed', 'official_video', 'Composer', 
 
 def catboost():
     global errors
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
     # Normalization
     # sc = StandardScaler()
     # X_train = sc.fit_transform(X_train)
@@ -58,8 +58,8 @@ print(errors)
 print(np.mean(errors))
 print(np.round(mean))
 
-danceability_df = pd.DataFrame(np.round(mean))
-danceability_df.to_csv('results.csv', index=False)
+danceability_df = pd.DataFrame(mean)
+danceability_df.to_csv('results1.csv', index=False)
 
 end = time.time()
 
