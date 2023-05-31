@@ -1,66 +1,70 @@
-import time
-import catboost as cb
-import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+import time
+import pandas as pd
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import SimpleImputer, IterativeImputer
 from sklearn.metrics import mean_absolute_error
+from sklearn.model_selection import train_test_split
+import catboost as cb
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 start = time.time()
 
-# Split the data into train and test sets
-data = pd.read_csv('../train/train_encoded.csv')
+# Load your dataset
+data = pd.read_csv('../train/train.csv')
+
+test = pd.read_csv('../test/test.csv')
 X = data.drop('Danceability', axis=1)
 y = data['Danceability']
-errors = []
-categorical_features = ['Album_type', 'Licensed', 'official_video', 'Composer', 'Artist', 'Title', 'Channel', 'Album']
+combined_data = pd.concat([X, test], ignore_index=True)
+combined_data = combined_data.drop(['Uri'], axis=1)
+# ['Energy', 'Key', 'Loudness', 'Speechiness', 'Acousticness',
+#        'Instrumentalness', 'Liveness', 'Valence', 'Tempo', 'Duration_ms',
+#        'Views', 'Likes', 'Stream', 'Album_type', 'Licensed', 'official_video',
+#        'id', 'Track', 'Album', 'Url_spotify', 'Url_youtube', 'Comments',
+#        'Description', 'Title', 'Channel', 'Composer', 'Artist']
 
 
-def catboost():
-    global errors
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
-    # Normalization
-    # sc = StandardScaler()
-    # X_train = sc.fit_transform(X_train)
-    # X_test = sc.transform(X_test)
+# impute categorical values
+categorical_cols = list(np.array(combined_data.select_dtypes(include='object').columns))
+imputer = SimpleImputer(strategy='most_frequent')
+combined_data[categorical_cols] = imputer.fit_transform(combined_data[categorical_cols])
 
-    model = cb.CatBoostRegressor(iterations=1000, depth=6, learning_rate=0.1, loss_function='MAE', eval_metric='MAE',
-                                 l2_leaf_reg=5)
-    # Fit the model on the training data
-    model.fit(X_train, y_train, cat_features=categorical_features)
+# impute numerical values
+numeric_cols = list(combined_data.select_dtypes(include=np.number).columns)
+numeric_cols.remove('Key')
+# imputer = IterativeImputer(estimator=LinearRegression())
+imputer = SimpleImputer(strategy='mean')
+# sc = StandardScaler()
+# combined_data[numeric_cols] = sc.fit_transform(combined_data[numeric_cols])
+combined_data[numeric_cols] = imputer.fit_transform(combined_data[numeric_cols])
 
-    # Make predictions on the test data
+label_encoder = LabelEncoder()
+combined_data['Key'] = label_encoder.fit_transform(combined_data['Key'])
 
-    # Evaluate the model
-    Eout = mean_absolute_error(y_test, model.predict(X_test))
-    Ein = mean_absolute_error(y_train, model.predict(X_train))
-    print("Eout:", Eout)
-    print("Ein:", Ein)
-    errors.append(Eout)
+X = combined_data.loc[:len(X)-1]
+test = combined_data.loc[len(X):]
 
-    test = pd.read_csv('../test/test_encoded.csv')
-    danceability = model.predict(test)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
-    for i in range(len(danceability)):
-        if danceability[i] > 9:
-            danceability[i] = 9
-        if danceability[i] < 0:
-            danceability[i] = 0
+model = cb.CatBoostRegressor(iterations=1000, depth=6, learning_rate=0.1, loss_function='MAE',
+                                 eval_metric='MAE', l2_leaf_reg=7, use_best_model=True)
+# Fit the model on the training data
+model.fit(X_train, y_train, cat_features=categorical_cols, eval_set=(X_test, y_test))
 
-    return danceability
+# Make predictions on the test data
 
+# Evaluate the model
+Eout = mean_absolute_error(y_test, model.predict(X_test))
+Ein = mean_absolute_error(y_train, model.predict(X_train))
+print("Eout:", Eout)
+print("Ein:", Ein)
 
-mean = np.zeros(6315)
-for i in range(10):
-    mean += catboost() / 10
-
-
-print(errors)
-print(np.mean(errors))
-print(np.round(mean))
-
-danceability_df = pd.DataFrame(mean)
-danceability_df.to_csv('results1.csv', index=False)
+danceability = np.round(model.predict(test))
+print(danceability)
+submission = pd.DataFrame({'id': test['id'], 'danceability': danceability})
+submission.to_csv('submission.csv', index=False)
 
 end = time.time()
-
-print(f"time {end - start}")
+print(f'time: {end - start}s')
