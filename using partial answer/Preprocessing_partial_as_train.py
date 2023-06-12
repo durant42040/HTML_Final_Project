@@ -1,7 +1,5 @@
-import catboost as cb
 import pandas as pd
 import numpy as np
-from sklearn.metrics import mean_absolute_error
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import  PowerTransformer
 from sklearn.compose import ColumnTransformer
