@@ -7,9 +7,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
 
 # Load data
-data = pd.read_csv("train.csv")
-test_set = pd.read_csv("test.csv")
-sample = pd.read_csv("sample_submission.csv")
+data = pd.read_csv("../train/train.csv")
+test_set = pd.read_csv("../test/test.csv")
 
 # Split data into features and target variable
 X_train = data.iloc[:, [i for i in range(1, 17)] + [23]].copy()  # Make a copy of the DataFrame
@@ -33,9 +32,10 @@ encoder = OneHotEncoder(handle_unknown='ignore', sparse=False)
 X_train_encoded = pd.DataFrame(encoder.fit_transform(X_train[character_cols]))
 X_test_encoded = pd.DataFrame(encoder.transform(X_test[character_cols]))
 
-X_train_encoded.columns = encoder.get_feature_names_out(character_cols)
-X_test_encoded.columns = encoder.get_feature_names_out(character_cols)
 
 # Concatenate encoded features with numeric features
 X_train_final = pd.concat([X_train[numeric_cols], X_train_encoded], axis=1)
 X_test_final = pd.concat([X_test[numeric_cols], X_test_encoded], axis=1)
+
+X_train_final.to_csv('./train_imputed.csv', header=True)
+X_test_final.to_csv('./test_imputed.csv', header=True)
