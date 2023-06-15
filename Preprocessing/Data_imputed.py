@@ -7,8 +7,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
 
 # Load data
-data = pd.read_csv("../train/train.csv")
-test_set = pd.read_csv("../test/test.csv")
+data = pd.read_csv("../training_data/train.csv")
+test_set = pd.read_csv("../testing_data/test.csv")
 
 # Split data into features and target variable
 X_train = data.iloc[:, [i for i in range(1, 17)] + [23]].copy()  # Make a copy of the DataFrame

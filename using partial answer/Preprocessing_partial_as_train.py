@@ -1,19 +1,16 @@
 import pandas as pd
 import numpy as np
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import  PowerTransformer
+from sklearn.preprocessing import PowerTransformer
 from sklearn.compose import ColumnTransformer
 
 # Load data
-data = pd.read_csv("train.csv")
-test_set = pd.read_csv("test.csv")
-sample = pd.read_csv("sample_submission.csv")
-partial = pd.read_csv("test_partial_answer.csv")
+data = pd.read_csv("../training_data/train.csv")
+test_set = pd.read_csv("../testing_data/test.csv")
+partial = pd.read_csv("../test_partial_answer.csv")
 
 # Merge the datasets based on the 'id' column
 external_validation = pd.merge(partial, test_set, on='id')
-
-
 
 # Move the 'id' column to the 18th column
 columns = data.columns.tolist()
@@ -21,13 +18,10 @@ columns.insert(17, columns.pop(columns.index('id')))
 
 data = pd.concat([data, external_validation], ignore_index=True)
 
-
 # Split data into features and target variable
-X_train = data.iloc[:, [i for i in range(1, 17)] + [23,26,27,28]].copy()
+X_train = data.iloc[:, [i for i in range(1, 17)] + [23, 26, 27, 28]].copy()
 y_train = data.iloc[:, 0]
-X_test = test_set.iloc[:, [i for i in range(0, 16)] + [22,25,26,27]].copy()
-
-
+X_test = test_set.iloc[:, [i for i in range(0, 16)] + [22, 25, 26, 27]].copy()
 
 # Identify column types
 numeric_cols = X_train.select_dtypes(include=np.number).columns
@@ -55,9 +49,13 @@ preprocessor = ColumnTransformer(
     ], remainder='passthrough'
 )
 
-# Fit the preprocessor on the test data
+# Fit the preprocessor on the testing_data data
 preprocessor.fit(X_test)
 
-# Transform the training and test data
+# Transform the training and testing_data data
 X_train_final = preprocessor.transform(X_train)
 X_test_final = preprocessor.transform(X_test)
+
+X_train_final.to_csv('../training_data/train_final.csv')
+X_test_final.to_csv('../testing_data/test_final.csv')
+

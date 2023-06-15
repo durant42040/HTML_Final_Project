@@ -1,22 +1,28 @@
+import pandas as pd
 from catboost import CatBoostRegressor
 from sklearn.metrics import make_scorer, mean_absolute_error, mean_squared_error
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import make_pipeline
 import numpy as np
 
-categorical_features = [14, 15, 16,17,18,19]
+X_test_final = pd.read_csv('../testing_data/test_encoded.csv')
+train_final = pd.read_csv('../training_data/train_encoded.csv')
+X_train_final = train_final.drop('Danceability', axis=1)
+y_train = train_final['Danceability']
+
+categorical_features = [14, 15, 16, 17, 18, 19]
 
 # Define pipeline for CatBoost Regression
 pipe_cat = make_pipeline(
-    CatBoostRegressor(task_type='GPU', devices='0', random_state=42, verbose=0, cat_features=categorical_features)
+    CatBoostRegressor(random_state=42, verbose=0, cat_features=categorical_features)
 )
 
 # Define hyperparameter grid
 param_grid_cat = {
-    'catboostregressor__iterations': [500,1000],
-    'catboostregressor__depth': [6,10],
-    'catboostregressor__learning_rate': [0.1,0.5],
-    'catboostregressor__l2_leaf_reg': [25,50,75]
+    'catboostregressor__iterations': [500, 1000],
+    'catboostregressor__depth': [6, 10],
+    'catboostregressor__learning_rate': [0.1, 0.5],
+    'catboostregressor__l2_leaf_reg': [25, 50, 75]
 }
 
 # Make scorer objects for MSE and MAE
@@ -33,19 +39,17 @@ print("Cross-validation MSE:", abs(grid_cat.cv_results_['mean_test_mse'][grid_ca
 print("Cross-validation MAE:", abs(grid_cat.cv_results_['mean_test_mae'][grid_cat.best_index_]))
 
 # Train the model on the full training set with the best hyperparameters
-model = CatBoostRegressor(task_type='GPU',
-                          devices='0',
-                          iterations=grid_cat.best_params_['catboostregressor__iterations'],
+model = CatBoostRegressor(iterations=grid_cat.best_params_['catboostregressor__iterations'],
                           depth=grid_cat.best_params_['catboostregressor__depth'],
                           learning_rate=grid_cat.best_params_['catboostregressor__learning_rate'],
-                          l2_leaf_reg = grid_cat.best_params_['catboostregressor__l2_leaf_reg'],
+                          l2_leaf_reg=grid_cat.best_params_['catboostregressor__l2_leaf_reg'],
                           random_state=42,
                           cat_features=categorical_features,
                           verbose=0)
 
 model.fit(X_train_final, y_train)
 
-# Make predictions on the test set
+# Make predictions on the testing_data set
 cat_pred = model.predict(X_test_final)
 
 # Round the predictions to the nearest integer
@@ -55,5 +59,5 @@ rounded_pred_cat = np.round(cat_pred).astype(int)
 clipped_pred_cat = np.clip(rounded_pred_cat, 0, 9)
 
 # Update sample submission file
-sample.iloc[:, 1] = clipped_pred_cat
-sample.to_csv('sample_cat.csv', index=False)
+submission = pd.DataFrame({'id': range(17170, 23485), 'danceability': clipped_pred_cat})
+submission.to_csv('submission.csv', index=False)

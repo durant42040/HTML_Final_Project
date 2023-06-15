@@ -1,70 +1,91 @@
-import numpy as np
 import time
-import pandas as pd
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import SimpleImputer, IterativeImputer
-from sklearn.metrics import mean_absolute_error
-from sklearn.model_selection import train_test_split
 import catboost as cb
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+import pandas as pd
+import numpy as np
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error
+from sklearn.preprocessing import LabelEncoder
 
 start = time.time()
 
-# Load your dataset
-data = pd.read_csv('../train/train.csv')
+data = pd.read_csv('../training_data/train.csv')
+test = pd.read_csv('../testing_data/test.csv')
 
-test = pd.read_csv('../test/test.csv')
-X = data.drop('Danceability', axis=1)
+X = data.drop(['Danceability'], axis=1)
 y = data['Danceability']
+
 combined_data = pd.concat([X, test], ignore_index=True)
-combined_data = combined_data.drop(['Uri'], axis=1)
-# ['Energy', 'Key', 'Loudness', 'Speechiness', 'Acousticness',
-#        'Instrumentalness', 'Liveness', 'Valence', 'Tempo', 'Duration_ms',
-#        'Views', 'Likes', 'Stream', 'Album_type', 'Licensed', 'official_video',
-#        'id', 'Track', 'Album', 'Url_spotify', 'Url_youtube', 'Comments',
-#        'Description', 'Title', 'Channel', 'Composer', 'Artist']
+combined_data = combined_data.drop(['Description', 'Uri', 'Url_spotify', 'Url_youtube', 'Track', 'id'], axis=1)
 
+# Impute categorical values
+categorical_cols = ['Key', 'Album_type', 'Licensed', 'official_video', 'Album', 'Channel', 'Composer', 'Artist', 'Title']
 
-# impute categorical values
-categorical_cols = list(np.array(combined_data.select_dtypes(include='object').columns))
 imputer = SimpleImputer(strategy='most_frequent')
-combined_data[categorical_cols] = imputer.fit_transform(combined_data[categorical_cols])
+impute_cols = ['Album_type', 'Licensed', 'official_video', 'Key']
+combined_data[impute_cols] = imputer.fit_transform(combined_data[impute_cols])
+character_imputer_frequent = SimpleImputer(strategy='most_frequent')
 
-# impute numerical values
-numeric_cols = list(combined_data.select_dtypes(include=np.number).columns)
-numeric_cols.remove('Key')
-# imputer = IterativeImputer(estimator=LinearRegression())
-imputer = SimpleImputer(strategy='mean')
-# sc = StandardScaler()
-# combined_data[numeric_cols] = sc.fit_transform(combined_data[numeric_cols])
-combined_data[numeric_cols] = imputer.fit_transform(combined_data[numeric_cols])
+
+combined_data['Artist'] = combined_data['Title'].str.split('-').str[0]
 
 label_encoder = LabelEncoder()
-combined_data['Key'] = label_encoder.fit_transform(combined_data['Key'])
+columns = combined_data.columns.tolist()
+for feature in columns:
+    combined_data[feature] = label_encoder.fit_transform(combined_data[feature])
 
-X = combined_data.loc[:len(X)-1]
+X = combined_data.loc[:len(X) - 1]
+
 test = combined_data.loc[len(X):]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+errors = []
 
-model = cb.CatBoostRegressor(iterations=1000, depth=6, learning_rate=0.1, loss_function='MAE',
-                                 eval_metric='MAE', l2_leaf_reg=7, use_best_model=True)
-# Fit the model on the training data
-model.fit(X_train, y_train, cat_features=categorical_cols, eval_set=(X_test, y_test))
 
-# Make predictions on the test data
+def catboost():
+    global errors
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+    # Normalization
+    # sc = StandardScaler()
+    # X_train = sc.fit_transform(X_train)
+    # X_test = sc.transform(X_test)
 
-# Evaluate the model
-Eout = mean_absolute_error(y_test, model.predict(X_test))
-Ein = mean_absolute_error(y_train, model.predict(X_train))
-print("Eout:", Eout)
-print("Ein:", Ein)
+    model = cb.CatBoostRegressor(iterations=1000, depth=6, learning_rate=0.1, loss_function='MAE', eval_metric='MAE',
+                                 l2_leaf_reg=5)
+    # Fit the model on the training data
+    model.fit(X_train, y_train, cat_features=categorical_cols, eval_set=(X_test, y_test))
 
-danceability = np.round(model.predict(test))
-print(danceability)
-submission = pd.DataFrame({'id': test['id'], 'danceability': danceability})
+    # Make predictions on the testing_data data
+
+    # Evaluate the model
+    Eout = mean_absolute_error(y_test, model.predict(X_test))
+    Ein = mean_absolute_error(y_train, model.predict(X_train))
+    print("Eout:", Eout)
+    print("Ein:", Ein)
+    errors.append(Eout)
+
+    danceability = model.predict(test)
+
+    for i in range(len(danceability)):
+        if danceability[i] > 9:
+            danceability[i] = 9
+        if danceability[i] < 0:
+            danceability[i] = 0
+
+    return danceability
+
+
+mean = np.zeros(6315)
+for i in range(10):
+    mean += catboost() / 10
+
+
+print(errors)
+print(np.mean(errors))
+print(np.round(mean))
+
+submission = pd.DataFrame({'id': range(17170, 23485), 'Danceability': np.round(mean)})
 submission.to_csv('submission.csv', index=False)
 
 end = time.time()
-print(f'time: {end - start}s')
+
+print(f"time {end - start}")
