@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 # Load data
 data = pd.read_csv("../training_data/train.csv")
 test_set = pd.read_csv("../testing_data/test.csv")
-sample = pd.read_csv("../Code/submission.csv")
+sample = pd.read_csv("../Algorithms/submission.csv")
 
 # Split data into features and target variable
 X_train = data.iloc[:, [i for i in range(1, 17)] + [23]].copy()
